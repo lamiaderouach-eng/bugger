@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>¿Cómo funciona un depurador de Java?</title>
+  <meta name="description" content="Animación interactiva que explica cómo funciona un depurador (debugger) de Java: breakpoints, paso a paso, pila de llamadas y variables.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <p class="kicker">Java · Depuración</p>
+    <h1>¿Cómo funciona un <span class="hl">depurador</span> de Java?</h1>
+    <p class="lead">Un depurador (<em>debugger</em>) te deja <strong>parar</strong> un programa en mitad de su ejecución y mirar dentro: qué línea toca, qué valen las variables y quién llamó a quién. Pruébalo tú mismo.</p>
+    <nav class="toc" aria-label="Secciones">
+      <a href="#simulador">1. Simulador</a>
+      <a href="#por-dentro">2. Por dentro</a>
+      <a href="#botones">3. Los botones</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ 1. SIMULADOR ============ -->
+    <section id="simulador" aria-labelledby="t-sim">
+      <h2 id="t-sim">1. Simulador de depuración</h2>
+      <p class="intro">
+        Pulsa <strong>Debug</strong>. El programa corre hasta el punto rojo (<em>breakpoint</em>) y se para.
+        Después avanza con los botones. Haz clic en el círculo junto a un número de línea para poner o quitar un breakpoint.
+      </p>
+
+      <div class="controls" role="toolbar" aria-label="Controles del depurador">
+        <button id="btn-resume" class="btn primary" title="Continuar hasta el siguiente breakpoint (tecla R)">▶ Debug / Continuar <kbd>R</kbd></button>
+        <button id="btn-into" class="btn" title="Entrar en la función de esta línea (tecla I)">↳ Step Into <kbd>I</kbd></button>
+        <button id="btn-over" class="btn" title="Ejecutar esta línea entera (tecla O)">⤼ Step Over <kbd>O</kbd></button>
+        <button id="btn-out" class="btn" title="Terminar la función actual (tecla U)">↰ Step Out <kbd>U</kbd></button>
+        <button id="btn-auto" class="btn" aria-pressed="false" title="Avanzar solo, paso a paso">⏵ Animar</button>
+        <button id="btn-reset" class="btn ghost" title="Empezar de nuevo (tecla Esc)">⟲ Reiniciar</button>
+      </div>
+
+      <div class="sim">
+        <div class="panel code-panel">
+          <h3 class="panel-title">Main.java</h3>
+          <div id="code" class="code" role="group" aria-label="Código Java"></div>
+        </div>
+
+        <div class="side">
+          <div class="panel">
+            <h3 class="panel-title">Explicación</h3>
+            <p id="explain" class="explain" aria-live="polite"></p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Pila de llamadas <small>(Call Stack)</small></h3>
+            <ol id="stack" class="stack" aria-label="Pila de llamadas"></ol>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Variables <small id="vars-owner"></small></h3>
+            <table class="vars">
+              <thead><tr><th scope="col">Nombre</th><th scope="col">Valor</th></tr></thead>
+              <tbody id="vars"></tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Consola</h3>
+            <pre id="console" class="console" aria-live="polite"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2. POR DENTRO ============ -->
+    <section id="por-dentro" aria-labelledby="t-in">
+      <h2 id="t-in">2. Por dentro: el IDE habla con la JVM</h2>
+      <p class="intro">
+        Tu programa corre en la <strong>JVM</strong> (Java Virtual Machine). El <strong>IDE</strong> (IntelliJ, Eclipse, VS Code…) es otro programa distinto.
+        Hablan por un canal llamado <strong>JDWP</strong> (<em>Java Debug Wire Protocol</em>). El IDE pide cosas; la JVM responde.
+      </p>
+
+      <div class="arch" id="arch">
+        <div class="node ide">
+          <span class="node-icon" aria-hidden="true">🖥️</span>
+          <strong>IDE</strong>
+          <span class="node-sub">el depurador que ves</span>
+        </div>
+        <div class="wire" aria-hidden="true">
+          <div class="wire-label">JDWP</div>
+          <div class="wire-line"></div>
+          <div id="packet" class="packet"></div>
+        </div>
+        <div class="node jvm">
+          <span class="node-icon" aria-hidden="true">☕</span>
+          <strong>JVM</strong>
+          <span class="node-sub">tu programa Java</span>
+          <span id="jvm-state" class="state running">● Corriendo</span>
+        </div>
+      </div>
+
+      <div class="arch-controls">
+        <button id="arch-play" class="btn" aria-pressed="true">⏸ Pausar</button>
+        <button id="arch-next" class="btn">Siguiente mensaje →</button>
+      </div>
+
+      <ol id="msgs" class="msgs" aria-label="Mensajes entre el IDE y la JVM"></ol>
+
+      <div class="callout">
+        <h3>¿Cómo se activa?</h3>
+        <p>Se arranca la JVM con un “agente” de depuración. Así el IDE se conecta al puerto 5005:</p>
+        <pre class="snippet"><code>java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 Main</code></pre>
+        <p class="small">Cuando pulsas <em>Debug</em> en el IDE, él hace esto por ti.</p>
+      </div>
+    </section>
+
+    <!-- ============ 3. BOTONES ============ -->
+    <section id="botones" aria-labelledby="t-btn">
+      <h2 id="t-btn">3. Los botones, uno a uno</h2>
+      <div class="cards">
+        <article class="card"><span class="card-icon bp-dot" aria-hidden="true"></span><h3>Breakpoint</h3><p>Una marca roja en una línea. Cuando el programa llega ahí, <strong>se para</strong>.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">▶</span><h3>Resume</h3><p>“Sigue”. El programa corre hasta el siguiente breakpoint o hasta el final.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">⤼</span><h3>Step Over</h3><p>Ejecuta la línea <strong>entera</strong>. Si llama a una función, la ejecuta sin entrar.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">↳</span><h3>Step Into</h3><p><strong>Entra</strong> dentro de la función que llama la línea para verla por dentro.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">↰</span><h3>Step Out</h3><p>Termina la función actual y <strong>vuelve</strong> a quien la llamó.</p></article>
+        <article class="card"><span class="card-icon" aria-hidden="true">👁</span><h3>Variables y Watch</h3><p>Muestran el valor de cada variable <em>ahora</em>. Un <em>watch</em> vigila una expresión.</p></article>
+      </div>
+
+      <div class="callout tips">
+        <h3>Método para cazar un bug</h3>
+        <ol>
+          <li>Piensa: “¿qué valor <em>esperaba</em> en esta variable?”</li>
+          <li>Pon un breakpoint <strong>antes</strong> de la línea sospechosa.</li>
+          <li>Mira el valor <em>real</em>. ¿Es distinto? Entonces el fallo está antes.</li>
+          <li>Avanza con Step Over / Step Into hasta ver cuándo cambia mal.</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Hecho con HTML, CSS y JavaScript puros · Sin librerías · Material didáctico</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
